@@ -1,6 +1,6 @@
 import requests
 import os
-def Download_PDF(url, save_path="db/temp.pdf", remove=False):
+def Download_PDF(url, save_path="instance/temp.pdf", remove=False):
     response = requests.get(url)
     if response.status_code == 200:
         with open(save_path, "wb") as f:

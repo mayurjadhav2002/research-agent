@@ -4,23 +4,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "python index.py",
-    "install": "pip install -r requirements.txt && npm install",
-    "dev": "python index.py"
+    "start": "python app.py"
   },
   "author": "",
   "license": "ISC",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/mayurjadhav2002/research-agent.git"
-  },
-  "keywords": [],
-  "bugs": {
-    "url": "https://github.com/mayurjadhav2002/research-agent/issues"
-  },
-  "homepage": "https://github.com/mayurjadhav2002/research-agent#readme",
-  "description": "",
-  "dependencies": {
-   
-  }
+  "description": ""
 }
