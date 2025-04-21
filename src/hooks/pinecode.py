@@ -16,26 +16,28 @@ embedding_model = GoogleGenerativeAIEmbeddings(
     google_api_key=os.getenv("GOOGLE_API_KEY"),
 )
 llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash",
+    model="gemini-2.0-flash",
     google_api_key=os.getenv("GOOGLE_API_KEY"),
 )
 
 # Initialize Pinecone (new style)
 pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
 index_name = "demo"
-# if pc.has_index(index_name):
+deleted = False
+# if pc.has_index(index_name) and not deleted:
 #     print(f"Deleting index: {index_name}")
 #     pc.delete_index(index_name)
+#     deleted = True
 
 
-if not pc.has_index(name=index_name):
-    # Create a new index
-    pc.create_index(
-        name=index_name,
-        dimension=768,
-        metric="dotproduct",
-        spec=ServerlessSpec(cloud="aws", region="us-east-1"),
-    )
+# if not pc.has_index(name=index_name):
+#     # Create a new index
+#     pc.create_index(
+#         name=index_name,
+#         dimension=768,
+#         metric="dotproduct",
+#         spec=ServerlessSpec(cloud="aws", region="us-east-1"),
+#     )
 
 pc.describe_index(name=index_name)
 index = pc.Index(index_name)
@@ -43,36 +45,63 @@ vectorstore = PineconeVectorStore(
     index_name=index_name, embedding=embedding_model, text_key="text"
 )
 
-embedding = embedding_model.embed_query("test")
+# embedding = embedding_model.embed_query("test")
 
 
-def ingest_data(data: List[str]) -> bool:
+def ingest_data(data: List[dict]) -> bool:
     try:
-        docs = [Document(page_content=chunk) for chunk in data]
+        print()
+        if not data or len(data) == 0:
+            print("❌ No data provided for ingestion.")
+            return False
+        docs = [
+            Document(page_content=item["text"], metadata={"url": item["url"], "title": item.get("title", "Untitled Paper")})
+            for item in data
+        ]
+
         vectorstore.add_documents(docs)
-        # index.upsert(vectors=docs)
+        print(f"✅ Ingested {len(docs)} documents.")
         return True
     except Exception as e:
         print("❌ Error ingesting data:", e)
         return False
 
 
-def Query_pinecone(query: str, top_k: int = 1) -> List[str]:
+
+def Query_pinecone(query: str, top_k: int = 1) -> List[dict]:
     try:
-        # Perform similarity search in Pinecone vectorstore
+        print(f"🔍 Querying Pinecone with: {query}")
+        # Perform semantic similarity search
         results = vectorstore.similarity_search(query, k=top_k)
 
-        # Initialize list to hold results
-        vector_results = [r.page_content for r in results]
-
-        # Check if results are empty, and return an empty list if so
-        if not vector_results:
-            return []
-
-        # Otherwise, return the content of the search results
-        content = [result for result in vector_results]
-        return content
+        # Ensure results are returned in the correct format
+        return [
+            {
+                "text": doc.page_content,
+                "url": doc.metadata.get("url", "unknown"),
+                "title": doc.metadata.get("title", "unknown"),
+            }
+            for doc in results
+        ]
 
     except Exception as e:
-        print("❌ Error querying Pinecone:", e)
+        print(f"❌ Error querying Pinecone: {e}")
+        return []
+
+def Retriver(query: str, top_k: int = 5) -> List[dict]:
+    try:
+        print(f"🔍 Retrieving documents for query: {query}")
+        results = vectorstore.as_retriever(search_kwargs={"k": top_k})
+
+        return [
+            {
+                "text": doc.page_content,
+                "url": doc.metadata.get("url", "unknown"), 
+                "title": doc.metadata.get("title", "unknown"),
+            }
+            for doc in results
+        ]
+
+    except Exception as e:
+        print(f"❌ Error retrieving documents from Pinecone: {e}")
         return []
